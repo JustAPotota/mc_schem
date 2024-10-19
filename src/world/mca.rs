@@ -1,16 +1,19 @@
+use crate::error::Error;
+use crate::raid::RaidList;
+use crate::world;
+use crate::world::{
+    ArcSlice, Chunk, ChunkVariant, Dimension, FileInfo, MCARawData, NBTWithSource, RefOrObject,
+    UnparsedChunkData,
+};
+use fastnbt::Value;
+use flate2::read::{GzDecoder, ZlibDecoder};
+use regex::Regex;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
 use std::sync::Arc;
-use fastnbt::Value;
-use flate2::read::{GzDecoder, ZlibDecoder};
-use regex::Regex;
-use world::{XZCoordinate, ChunkPos};
-use crate::error::Error;
-use crate::world;
-use crate::world::{ArcSlice, Chunk, ChunkVariant, Dimension, FileInfo, MCARawData, NBTWithSource, RefOrObject, UnparsedChunkData};
 use world::FilesRead;
-use crate::raid::RaidList;
+use world::{ChunkPos, XZCoordinate};
 
 pub const SEGMENT_BYTES: usize = 4096;
 
@@ -45,17 +48,15 @@ pub fn parse_mcc_filename(filename: &str) -> Option<ChunkPos> {
     return Some(ChunkPos::from_global_pos(&XZCoordinate { x, z }));
 }
 
-
 #[test]
 fn test_parse_mca_filename() {
-    let names = ["r.0.1.mca", "r.-1.9.mca", "r.1.-1.mca", "r.-1.-1.mca", ];
+    let names = ["r.0.1.mca", "r.-1.9.mca", "r.1.-1.mca", "r.-1.-1.mca"];
     for name in names {
         let pos = parse_mca_filename(name).unwrap();
         let filename = format!("r.{}.{}.mca", pos.x, pos.z);
         assert_eq!(filename, name);
     }
 }
-
 
 impl ChunkPos {
     pub fn from_global_pos(global_chunk_pos: &XZCoordinate) -> Self {
@@ -97,10 +98,12 @@ impl ChunkPos {
     }
 
     pub fn filename(&self, suffix: &str) -> String {
-        return format!("r.{}.{}.{}",
-                       self.file_coordinate().x,
-                       self.file_coordinate().z,
-                       suffix);
+        return format!(
+            "r.{}.{}.{}",
+            self.file_coordinate().x,
+            self.file_coordinate().z,
+            suffix
+        );
     }
 
     pub fn filename_mca(&self) -> String {
@@ -110,9 +113,7 @@ impl ChunkPos {
         return self.filename("mcr");
     }
     pub fn filename_mcc(&self) -> String {
-        return format!("c.{}.{}.mcc",
-                       self.global_x,
-                       self.global_z);
+        return format!("c.{}.{}.mcc", self.global_x, self.global_z);
     }
 
     pub fn block_pos_lower_bound(&self) -> [i32; 2] {
@@ -129,8 +130,8 @@ impl ChunkVariant {
             ChunkVariant::Unparsed(raw) => {
                 let chunk = raw.parse(chunk_pos)?;
                 Ok(RefOrObject::Object(chunk))
-            },
-            ChunkVariant::Parsed(chunk) => Ok(RefOrObject::Ref(chunk))
+            }
+            ChunkVariant::Parsed(chunk) => Ok(RefOrObject::Ref(chunk)),
         };
     }
     pub fn parse_inplace(&mut self, chunk_pos: &ChunkPos) -> Result<&mut Chunk, Error> {
@@ -140,7 +141,9 @@ impl ChunkVariant {
 
         match self {
             ChunkVariant::Parsed(chunk) => return Ok(chunk),
-            ChunkVariant::Unparsed(_) => { panic!("Unreachable code"); }
+            ChunkVariant::Unparsed(_) => {
+                panic!("Unreachable code");
+            }
         }
     }
 }
@@ -149,25 +152,33 @@ impl MCARawData {
     pub fn to_nbt(&self) -> Result<NBTWithSource, Error> {
         let parse_opt: Result<HashMap<String, Value>, fastnbt::error::Error>;
 
-        if self.data[0..2] == [0x78, 0x9c] {//zlib
+        if self.data[0..2] == [0x78, 0x9c] {
+            //zlib
             // Some mcc files are stored as zlib, but the compress method is 130.
             // This is to fix minecraft's error(at least in 1.20.2
             let src = ZlibDecoder::new(self.data.as_slice());
             parse_opt = fastnbt::from_reader(src);
         } else {
             match self.compress_method {
-                1 | 128 => {//gzip
+                1 | 128 => {
+                    //gzip
                     let src = GzDecoder::new(self.data.as_slice());
                     parse_opt = fastnbt::from_reader(src);
                 }
-                2 | 129 => {//zlib
+                2 | 129 => {
+                    //zlib
                     let src = ZlibDecoder::new(self.data.as_slice());
                     parse_opt = fastnbt::from_reader(src);
                 }
-                3 | 130 => {// no compress
+                3 | 130 => {
+                    // no compress
                     parse_opt = fastnbt::from_reader(self.data.as_slice());
                 }
-                _ => { return Err(Error::InvalidMCACompressType { compress_label: self.compress_method }); }
+                _ => {
+                    return Err(Error::InvalidMCACompressType {
+                        compress_label: self.compress_method,
+                    });
+                }
             }
         }
 
@@ -195,13 +206,10 @@ impl UnparsedChunkData {
     pub fn parse(&self, chunk_pos: &ChunkPos) -> Result<Chunk, Error> {
         let (region_nbt, entity_nbt) = self.to_nbt()?;
 
-        let chunk = Chunk::from_nbt(region_nbt,
-                                    entity_nbt,
-                                    &chunk_pos, )?;
+        let chunk = Chunk::from_nbt(region_nbt, entity_nbt, &chunk_pos)?;
         return Ok(chunk);
     }
 }
-
 
 fn get_compress_label(mca_data: &[u8]) -> (u8, usize) {
     let data_bytes: usize;
@@ -213,7 +221,9 @@ fn get_compress_label(mca_data: &[u8]) -> (u8, usize) {
     return (compress_type, data_bytes);
 }
 
-pub fn parse_multiple_mca_files(dir: &dyn FilesRead) -> Result<HashMap<ChunkPos, MCARawData>, Error> {
+pub fn parse_multiple_mca_files(
+    dir: &dyn FilesRead,
+) -> Result<HashMap<ChunkPos, MCARawData>, Error> {
     let files = dir.files();
     let mut mca_files = Vec::with_capacity(files.len());
     for info in files {
@@ -251,11 +261,13 @@ pub fn parse_multiple_mca_files(dir: &dyn FilesRead) -> Result<HashMap<ChunkPos,
 //     return Ok(result);
 // }
 
-pub fn parse_multiple_regions(region_dir: &dyn FilesRead,
-                              entity_dir: Option<&dyn FilesRead>,
-                              y_range: Range<i32>, dimension_id: i32,
-                              parse_directly: bool)
-                              -> Result<HashMap<ChunkPos, ChunkVariant>, Error> {
+pub fn parse_multiple_regions(
+    region_dir: &dyn FilesRead,
+    entity_dir: Option<&dyn FilesRead>,
+    y_range: Range<i32>,
+    dimension_id: i32,
+    parse_directly: bool,
+) -> Result<HashMap<ChunkPos, ChunkVariant>, Error> {
     let region_data = parse_multiple_mca_files(region_dir)?;
     let mut entity_data = if let Some(entity_dir) = entity_dir {
         parse_multiple_mca_files(entity_dir)?
@@ -274,7 +286,11 @@ pub fn parse_multiple_regions(region_dir: &dyn FilesRead,
     }
 
     if parse_directly {
-        let mut temp = Dimension { chunks: result, y_range, raids: RaidList::default() };
+        let mut temp = Dimension {
+            chunks: result,
+            y_range,
+            raids: RaidList::default(),
+        };
         temp.parse_all(dimension_id)?;
         return Ok(temp.chunks);
     }
@@ -282,8 +298,11 @@ pub fn parse_multiple_regions(region_dir: &dyn FilesRead,
     return Ok(result);
 }
 
-fn parse_mca_file(file_info: &FileInfo, file_coord: &XZCoordinate,
-                  region_dir: &dyn FilesRead) -> Result<HashMap<ChunkPos, MCARawData>, Error> {
+fn parse_mca_file(
+    file_info: &FileInfo,
+    file_coord: &XZCoordinate,
+    region_dir: &dyn FilesRead,
+) -> Result<HashMap<ChunkPos, MCARawData>, Error> {
     let mca_bytes: ArcSlice = if let Some(slice) = region_dir.read_file_nocopy(&file_info.name)? {
         slice
     } else {
@@ -296,7 +315,9 @@ fn parse_mca_file(file_info: &FileInfo, file_coord: &XZCoordinate,
         return Ok(result);
     }
     if mca_bytes.len() % 4096 != 0 {
-        return Err(Error::IncompleteSegmentInMCA { bytes: mca_bytes.len() });
+        return Err(Error::IncompleteSegmentInMCA {
+            bytes: mca_bytes.len(),
+        });
     }
 
     for z in 0..32 {
@@ -316,16 +337,22 @@ pub fn offset_in_mca_file(local_coord: &XZCoordinate<u32>) -> u32 {
     return 4 * ((local_coord.x & 31) + (local_coord.z & 31) * 32);
 }
 
-fn parse_mca_single_chunk(chunk_pos: &ChunkPos, mca_bytes: ArcSlice, region_dir: &dyn FilesRead) -> Result<Option<MCARawData>, Error> {
+fn parse_mca_single_chunk(
+    chunk_pos: &ChunkPos,
+    mca_bytes: ArcSlice,
+    region_dir: &dyn FilesRead,
+) -> Result<Option<MCARawData>, Error> {
     let header: [u8; 4];
     let local_coord = chunk_pos.local_coordinate();
     {
         let offset_by_byte = offset_in_mca_file(&local_coord) as usize;
         debug_assert!((offset_by_byte + 3) < 4096);
-        header = [mca_bytes[offset_by_byte + 0],
+        header = [
+            mca_bytes[offset_by_byte + 0],
             mca_bytes[offset_by_byte + 1],
             mca_bytes[offset_by_byte + 2],
-            mca_bytes[offset_by_byte + 3]];
+            mca_bytes[offset_by_byte + 3],
+        ];
     }
     if header == [0; 4] {
         // no such chunk
@@ -344,10 +371,11 @@ fn parse_mca_single_chunk(chunk_pos: &ChunkPos, mca_bytes: ArcSlice, region_dir:
         ]);
     }
 
-
     let offset_by_segment = u32::from_be_bytes([0, header[0], header[1], header[2]]);
     let num_segments = header[3] as u32;
-    if offset_by_segment < 2 || (num_segments + offset_by_segment) as usize > (mca_bytes.len() / SEGMENT_BYTES) {
+    if offset_by_segment < 2
+        || (num_segments + offset_by_segment) as usize > (mca_bytes.len() / SEGMENT_BYTES)
+    {
         return Err(Error::InvalidSegmentRangeInMCA {
             chunk_local_x: local_coord.x as i32,
             chunk_local_z: local_coord.z as i32,
@@ -360,7 +388,8 @@ fn parse_mca_single_chunk(chunk_pos: &ChunkPos, mca_bytes: ArcSlice, region_dir:
     let data_beg_idx = offset_by_segment as usize * SEGMENT_BYTES;
     let data_end_idx = (offset_by_segment + num_segments) as usize * SEGMENT_BYTES;
     //let range = ;
-    let (compress_label, compressed_len) = get_compress_label(&mca_bytes[data_beg_idx..data_end_idx]);
+    let (compress_label, compressed_len) =
+        get_compress_label(&mca_bytes[data_beg_idx..data_end_idx]);
 
     if ![1, 128, 2, 129, 3, 130].contains(&compress_label) {
         return Err(Error::InvalidMCACompressType { compress_label });
@@ -369,10 +398,12 @@ fn parse_mca_single_chunk(chunk_pos: &ChunkPos, mca_bytes: ArcSlice, region_dir:
     if compress_label > 127 {
         let mcc_filename = chunk_pos.filename_mcc();
         let mcc_bytes = match region_dir.read_file_as_arc_slice(&mcc_filename) {
-            Err(e) => return Err(Error::MissingMCCFile {
-                filename: mcc_filename,
-                detail: Box::new(e),
-            }),
+            Err(e) => {
+                return Err(Error::MissingMCCFile {
+                    filename: mcc_filename,
+                    detail: Box::new(e),
+                })
+            }
             Ok(bytes) => bytes,
         };
 

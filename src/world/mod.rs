@@ -23,21 +23,20 @@ use std::sync::Arc;
 
 use fastnbt::Value;
 
-use crate::{BlockEntity, Entity};
 use crate::biome::Biome;
 use crate::block::Block;
 use crate::error::Error;
 use crate::raid::RaidList;
 use crate::region::{Light, PendingTick};
+use crate::{BlockEntity, Entity};
 
-pub mod mca;
-mod files_reader;
 mod chunk;
-mod dimension;
-mod sub_chunk;
 mod chunk_ref;
+mod dimension;
+mod files_reader;
+pub mod mca;
+mod sub_chunk;
 mod world;
-
 
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub struct XZCoordinate<T = i32> {
@@ -153,7 +152,6 @@ pub struct WorldLoadOption {
     parse_directly: bool,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct FileInfo {
     pub name: String,
@@ -179,8 +177,8 @@ pub trait FilesRead {
         let mut src = self.open_file(filename)?;
         dest.clear();
         return match src.read_to_end(dest) {
-            Ok(_) => { Ok(()) }
-            Err(e) => { Err(Error::IOReadError(e)) }
+            Ok(_) => Ok(()),
+            Err(e) => Err(Error::IOReadError(e)),
         };
     }
 
@@ -264,11 +262,20 @@ pub trait AbsolutePosIndexed<'this, 'dim: 'this> {
     fn total_blocks(&self, include_air: bool) -> u64;
     /// Returns detailed block infos at `r_pos`, including block index, block, block entity and pending tick.
     /// Returns `None` if the block is outside the region
-    fn block_info_at(&'this self, a_pos: [i32; 3]) -> Option<(u16, &'dim Block, Option<&'dim BlockEntity>, &'dim [PendingTick])> {
-        return Some((self.block_index_at(a_pos)?,
-                     self.block_at(a_pos)?,
-                     self.block_entity_at(a_pos),
-                     self.pending_tick_at(a_pos),
+    fn block_info_at(
+        &'this self,
+        a_pos: [i32; 3],
+    ) -> Option<(
+        u16,
+        &'dim Block,
+        Option<&'dim BlockEntity>,
+        &'dim [PendingTick],
+    )> {
+        return Some((
+            self.block_index_at(a_pos)?,
+            self.block_at(a_pos)?,
+            self.block_entity_at(a_pos),
+            self.pending_tick_at(a_pos),
         ));
     }
     /// Get block index at `r_pos`, returns `None` if the block is outside the region

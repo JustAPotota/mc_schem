@@ -1,8 +1,8 @@
+use crate::item::{Inventory, Item};
 use std::any::Any;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::{Debug, Formatter};
 use strum::FromRepr;
-use crate::item::{Inventory, Item};
 
 #[derive(Debug, Clone)]
 pub struct DimensionId(String);
@@ -187,7 +187,6 @@ pub struct PotionEffectFactorCalculationData {
     pub padding_duration: i32,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct PlayerAbilities {
     pub flying: bool,
@@ -222,7 +221,6 @@ pub enum PlayerGameType {
     Adventure = 2,
     Spectator = 3,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct WardenSpawnTracker {
@@ -452,7 +450,12 @@ pub struct EntityBox(Box<dyn GetEntityMut>);
 impl Debug for EntityBox {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let ptr = self.0.as_ref() as *const dyn GetEntityMut;
-        return write!(f, "EntityBox, type: {:?}, address: {:?}", self.0.type_id(), ptr);
+        return write!(
+            f,
+            "EntityBox, type: {:?}, address: {:?}",
+            self.0.type_id(),
+            ptr
+        );
     }
 }
 

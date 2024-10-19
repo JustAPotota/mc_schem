@@ -1,9 +1,8 @@
-use ndarray::{ArrayView2, ArrayView3};
 use crate::biome::Biome;
 use crate::block::Block;
 use crate::region::{BlockEntity, HasPalette, Light, PendingTick, WorldSlice};
 use crate::world::SubChunk;
-
+use ndarray::{ArrayView2, ArrayView3};
 
 impl SubChunk {
     pub fn new() -> SubChunk {
@@ -48,7 +47,6 @@ impl WorldSlice for SubChunk {
     fn shape(&self) -> [i32; 3] {
         return [16, 16, 16];
     }
-
 
     fn total_blocks(&self, include_air: bool) -> u64 {
         let air_index = self.block_index_of_air();

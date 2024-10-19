@@ -16,11 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use strum::{Display, EnumString};
+use fastnbt::Value;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
-use fastnbt::Value;
+use strum::{Display, EnumString};
 
 /// `Block` is a type of block with namespace and properties(aka attributes) in MC.
 #[derive(Debug, Clone, Eq)]
@@ -31,12 +31,11 @@ pub struct Block {
     pub id: String,
     /// Properties of the block. The key is property names, and value is property value
     pub attributes: BTreeMap<String, String>,
-
 }
 
 /// Error of parsing block id in string
 #[repr(u8)]
-#[derive(Debug,EnumString,Display,PartialEq,Copy,Clone)]
+#[derive(Debug, EnumString, Display, PartialEq, Copy, Clone)]
 pub enum BlockIdParseError {
     TooManyColons = 0,
     TooManyLeftBrackets = 1,
@@ -53,16 +52,16 @@ pub enum BlockIdParseError {
     InvalidCharacter = 12,
 }
 
-fn check_blockid_characters(blkid:&str) ->Result<(),BlockIdParseError> {
+fn check_blockid_characters(blkid: &str) -> Result<(), BlockIdParseError> {
     for ch in blkid.chars() {
-        if ch>='a' && ch <='z' {
+        if ch >= 'a' && ch <= 'z' {
             continue;
         }
         if ch >= '0' && ch <= '9' {
             continue;
         }
 
-        let other_valid_chars=[',','=','[',']',':','_'];
+        let other_valid_chars = [',', '=', '[', ']', ':', '_'];
         if other_valid_chars.contains(&ch) {
             continue;
         }
@@ -132,15 +131,18 @@ fn check_attributes_segment(att_seg: &str) -> Result<(), BlockIdParseError> {
 pub fn parse_block_id(full_id: &str) -> Result<(&str, &str, &str), BlockIdParseError> {
     match check_blockid_characters(full_id) {
         Err(err) => return Err(err),
-        _ => {},
+        _ => {}
     }
 
     let mut namespace = "";
     let colon_loc_opt = full_id.find(':');
     match colon_loc_opt {
-        Some(colon_loc) => if colon_loc != full_id.rfind(':').unwrap()
-        { return Err(BlockIdParseError::TooManyColons); } else {
-            namespace = &full_id[0..colon_loc];
+        Some(colon_loc) => {
+            if colon_loc != full_id.rfind(':').unwrap() {
+                return Err(BlockIdParseError::TooManyColons);
+            } else {
+                namespace = &full_id[0..colon_loc];
+            }
         }
         None => {}
     }
@@ -151,31 +153,32 @@ pub fn parse_block_id(full_id: &str) -> Result<(&str, &str, &str), BlockIdParseE
         None => 0,
     };
 
-
     let bracket_locs_opt = check_for_bracket(full_id);
     let bracket_locs: (usize, usize);
     match bracket_locs_opt {
         Err(e) => return Err(e),
-        Ok(locs_opt) => {
-            match locs_opt {
-                None => {
-                    id = &full_id[id_begin_idx..full_id.len()];
-                    if id.is_empty() {return Err(BlockIdParseError::MissingBlockId);}
-                    return Ok((namespace, id, ""));
+        Ok(locs_opt) => match locs_opt {
+            None => {
+                id = &full_id[id_begin_idx..full_id.len()];
+                if id.is_empty() {
+                    return Err(BlockIdParseError::MissingBlockId);
                 }
-                Some(locs) => {
-                    if locs.0 <= id_begin_idx {
-                        return Err(BlockIdParseError::ColonsInWrongPosition);
-                    }
-                    bracket_locs = locs;
-                    id=&full_id[id_begin_idx..bracket_locs.0];
-                    if id.is_empty() {return Err(BlockIdParseError::MissingBlockId);}
+                return Ok((namespace, id, ""));
+            }
+            Some(locs) => {
+                if locs.0 <= id_begin_idx {
+                    return Err(BlockIdParseError::ColonsInWrongPosition);
+                }
+                bracket_locs = locs;
+                id = &full_id[id_begin_idx..bracket_locs.0];
+                if id.is_empty() {
+                    return Err(BlockIdParseError::MissingBlockId);
                 }
             }
-        }
+        },
     }
 
-    if bracket_locs.1+1 <full_id.len() {
+    if bracket_locs.1 + 1 < full_id.len() {
         return Err(BlockIdParseError::ExtraStringAfterRightBracket);
     }
 
@@ -239,7 +242,11 @@ impl PartialEq<Self> for Block {
             match find_res {
                 None => return false,
                 Some(vaule) => {
-                    if vaule == att.1 { continue; } else { return false; }
+                    if vaule == att.1 {
+                        continue;
+                    } else {
+                        return false;
+                    }
                 }
             }
         }
@@ -279,7 +286,8 @@ impl Block {
         blk.id = segmented.1.to_string();
 
         for attri in attri_list {
-            blk.attributes.insert(String::from(attri.0), String::from(attri.1));
+            blk.attributes
+                .insert(String::from(attri.0), String::from(attri.1));
         }
 
         return Ok(blk);
@@ -352,7 +360,7 @@ impl Block {
             namespace: String::from("minecraft"),
             id: String::from("air"),
             attributes: BTreeMap::new(),
-        }
+        };
     }
     /// Returns a block with empty namespace, id and properties
     pub fn empty_block() -> Block {
@@ -360,7 +368,7 @@ impl Block {
             namespace: "".to_string(),
             id: "".to_string(),
             attributes: BTreeMap::new(),
-        }
+        };
     }
 
     /// Returns true if the block is `minecraft:structure_void`
@@ -369,13 +377,15 @@ impl Block {
             namespace: String::from("minecraft"),
             id: String::from("structure_void"),
             attributes: BTreeMap::new(),
-        }
+        };
     }
     /// Convert the block info nbt format
     pub fn to_nbt(&self) -> HashMap<String, Value> {
         let mut nbt: HashMap<String, Value> = HashMap::new();
-        nbt.insert(String::from("Name"),
-                   Value::String(format!("{}:{}", self.namespace, self.id)));
+        nbt.insert(
+            String::from("Name"),
+            Value::String(format!("{}:{}", self.namespace, self.id)),
+        );
         if !self.attributes.is_empty() {
             let mut props: HashMap<String, Value> = HashMap::new();
             for (key, val) in &self.attributes {
@@ -389,7 +399,9 @@ impl Block {
 
     ///Set property of a block
     pub fn set_property<V: ?Sized>(&mut self, key: &str, value: &V)
-        where for<'a> &'a V: Display {
+    where
+        for<'a> &'a V: Display,
+    {
         self.attributes.insert(key.to_string(), value.to_string());
     }
 
@@ -463,13 +475,12 @@ pub enum CommonBlock {
     StructureVoid = 1,
 }
 
-
 impl CommonBlock {
     /// Convert `CommonBlock` to `Block`
     pub fn to_block(&self) -> Block {
         return match self {
             CommonBlock::Air => Block::air(),
             CommonBlock::StructureVoid => Block::structure_void(),
-        }
+        };
     }
 }

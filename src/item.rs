@@ -1,9 +1,9 @@
-use std::collections::{BTreeMap, HashMap};
-use fastnbt::Value;
-use serde::Deserialize;
-use crate::{Error, unwrap_tag};
 use crate::error::{unwrap_opt_i8, unwrap_opt_string};
 use crate::schem::id_of_nbt_tag;
+use crate::{unwrap_tag, Error};
+use fastnbt::Value;
+use serde::Deserialize;
+use std::collections::{BTreeMap, HashMap};
 //use crate::error::NBTWithPath;
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -20,16 +20,12 @@ impl Item {
         let count = unwrap_opt_i8(&nbt, "Count", tag_path)?;
         let id = unwrap_opt_string(&nbt, "id", tag_path)?.clone();
         let tags = if let Some(t) = nbt.get("tag") {
-            unwrap_tag!(t,Compound,HashMap::new(),format!("{tag_path}/tag")).clone()
+            unwrap_tag!(t, Compound, HashMap::new(), format!("{tag_path}/tag")).clone()
         } else {
             HashMap::new()
         };
 
-        return Ok(Item {
-            count,
-            id,
-            tags,
-        });
+        return Ok(Item { count, id, tags });
 
         // let nbt = Value::Compound(nbt);
         // let deserializer = NBTWithPath {
@@ -51,7 +47,7 @@ impl Inventory {
         let mut parsed: HashMap<i8, String> = HashMap::with_capacity(nbt.len());
         for (idx, nbt) in nbt.iter().enumerate() {
             let tag_path = format!("{tag_path}/[{idx}]");
-            let nbt = unwrap_tag!(nbt,Compound,HashMap::new(),tag_path);
+            let nbt = unwrap_tag!(nbt, Compound, HashMap::new(), tag_path);
             let item = Item::from_nbt(nbt, &tag_path)?;
             let slot = unwrap_opt_i8(nbt, "Slot", &tag_path)?;
             if result.contains_key(&slot) {

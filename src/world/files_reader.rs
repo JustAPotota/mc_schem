@@ -14,12 +14,18 @@ use crate::world::{ArcSlice, FileInfo, FilesInMemory, FilesRead, FolderOnDisk, S
 impl ArcSlice {
     pub fn from(src: Arc<Vec<u8>>) -> Self {
         let range = 0..src.len();
-        return Self { data_owner: src, range };
+        return Self {
+            data_owner: src,
+            range,
+        };
     }
 
     pub fn clone_from(src: &[u8]) -> Self {
         let data_owner = Arc::new(src.to_vec());
-        return Self { data_owner, range: 0..src.len() };
+        return Self {
+            data_owner,
+            range: 0..src.len(),
+        };
     }
 
     pub fn slice(&self, range: Range<usize>) -> Self {
@@ -29,7 +35,10 @@ impl ArcSlice {
         assert!(end <= self.range.end);
         assert!(start <= end);
 
-        return Self { data_owner: self.data_owner.clone(), range: start..end };
+        return Self {
+            data_owner: self.data_owner.clone(),
+            range: start..end,
+        };
     }
 
     pub fn as_slice(&self) -> &[u8] {
@@ -77,7 +86,9 @@ fn impl_sub_dir<'a, T: FilesRead>(src: &'a T, dir: &str) -> SubDirectory<'a> {
 
 impl FolderOnDisk {
     pub fn new(path: &str) -> Self {
-        let mut ret = FolderOnDisk { path: path.replace('\\', "/") };
+        let mut ret = FolderOnDisk {
+            path: path.replace('\\', "/"),
+        };
         if ret.path.ends_with('/') {
             ret.path.pop();
         }
@@ -125,7 +136,7 @@ impl FilesRead for FolderOnDisk {
         let filename = format!("{}/{filename}", self.path);
         return match File::open(filename) {
             Ok(file) => Ok(Box::new(file)),
-            Err(e) => Err(Error::FileOpenError(e))
+            Err(e) => Err(Error::FileOpenError(e)),
         };
     }
 
@@ -133,12 +144,12 @@ impl FilesRead for FolderOnDisk {
         let filename = format!("{}/{filename}", self.path);
         let mut src = match File::open(&filename) {
             Ok(file) => file,
-            Err(e) => return Err(Error::FileOpenError(e))
+            Err(e) => return Err(Error::FileOpenError(e)),
         };
 
         let metadata = match std::fs::metadata(filename) {
             Ok(md) => md,
-            Err(e) => return Err(Error::FileOpenError(e))
+            Err(e) => return Err(Error::FileOpenError(e)),
         };
         dest.reserve(metadata.len() as usize);
         if let Err(e) = src.read_to_end(dest) {
@@ -149,16 +160,20 @@ impl FilesRead for FolderOnDisk {
 }
 
 impl FilesInMemory {
-    pub fn from_7z_reader<T: Read + Seek>(mut src: SevenZReader<T>, source: Option<String>) -> Result<FilesInMemory, Error> {
+    pub fn from_7z_reader<T: Read + Seek>(
+        mut src: SevenZReader<T>,
+        source: Option<String>,
+    ) -> Result<FilesInMemory, Error> {
         let mut result = FilesInMemory {
             files: HashMap::new(),
-            source: source.unwrap_or("7z file loaded from SevenZReader, filename unknown".to_string()),
+            source: source
+                .unwrap_or("7z file loaded from SevenZReader, filename unknown".to_string()),
         };
         let for_each_res = src.for_each_entries(|entry, reader| {
             let mut vec = Vec::with_capacity(entry.size as usize);
             match reader.read_to_end(&mut vec) {
                 Ok(_) => {}
-                Err(e) => return Err(sevenz_rust::Error::Io(e, Cow::from("")))
+                Err(e) => return Err(sevenz_rust::Error::Io(e, Cow::from(""))),
             }
 
             result.files.insert(entry.name.clone(), Arc::new(vec));
@@ -170,7 +185,10 @@ impl FilesInMemory {
         return Ok(result);
     }
 
-    pub fn from_7z_file(path: impl AsRef<Path> + std::fmt::Display, password: &str) -> Result<FilesInMemory, Error> {
+    pub fn from_7z_file(
+        path: impl AsRef<Path> + std::fmt::Display,
+        password: &str,
+    ) -> Result<FilesInMemory, Error> {
         let filename = path.to_string();
         let szr = match SevenZReader::open(path, sevenz_rust::Password::from(password)) {
             Ok(r) => r,
@@ -203,15 +221,11 @@ impl FilesRead for FilesInMemory {
 
     fn open_file(&self, filename: &str) -> Result<Box<dyn Read + '_>, Error> {
         return match self.files.get(filename) {
-            Some(bytes) => {
-                Ok(Box::new(bytes.as_slice()))
-            }
-            None => {
-                Err(Error::NoSuchFile {
-                    filename: filename.to_string(),
-                    expected_to_exist_in: self.source.clone(),
-                })
-            }
+            Some(bytes) => Ok(Box::new(bytes.as_slice())),
+            None => Err(Error::NoSuchFile {
+                filename: filename.to_string(),
+                expected_to_exist_in: self.source.clone(),
+            }),
         };
     }
 
@@ -222,26 +236,20 @@ impl FilesRead for FilesInMemory {
                 dest.clone_from_slice(&bytes);
                 Ok(())
             }
-            None => {
-                Err(Error::NoSuchFile {
-                    filename: filename.to_string(),
-                    expected_to_exist_in: self.source.clone(),
-                })
-            }
+            None => Err(Error::NoSuchFile {
+                filename: filename.to_string(),
+                expected_to_exist_in: self.source.clone(),
+            }),
         };
     }
 
     fn read_file_nocopy(&self, filename: &str) -> Result<Option<ArcSlice>, Error> {
         return match self.files.get(filename) {
-            Some(bytes) => {
-                Ok(Some(ArcSlice::from(bytes.clone())))
-            }
-            None => {
-                Err(Error::NoSuchFile {
-                    filename: filename.to_string(),
-                    expected_to_exist_in: self.source.clone(),
-                })
-            }
+            Some(bytes) => Ok(Some(ArcSlice::from(bytes.clone()))),
+            None => Err(Error::NoSuchFile {
+                filename: filename.to_string(),
+                expected_to_exist_in: self.source.clone(),
+            }),
         };
     }
 }
@@ -256,7 +264,7 @@ impl FilesRead for SubDirectory<'_> {
         return SubDirectory {
             root: self.root,
             dirname_with_slash: new_dir,
-        }
+        };
     }
 
     fn path(&self) -> String {
@@ -291,4 +299,3 @@ impl FilesRead for SubDirectory<'_> {
         return self.root.read_file(&new_filename, dest);
     }
 }
-

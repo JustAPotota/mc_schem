@@ -38,15 +38,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //!    An executable to do various manipulations on schematics
 //!
 
-
 use strum::Display;
 
 /// Implement minecraft block and string id parsing
 pub mod block;
-/// Number id parsing
-pub mod old_block;
 /// Errors in loading, saving and manipulating
 pub mod error;
+/// Number id parsing
+pub mod old_block;
 /// Implement region, entity, block entity and pending ticks
 pub mod region;
 /// Implement metadata, schematics and loading/saving
@@ -54,11 +53,11 @@ pub mod schem;
 
 pub mod world;
 
-mod c_ffi;
 mod biome;
-mod raid;
-mod player;
+mod c_ffi;
 mod item;
+mod player;
+mod raid;
 
 /// `Block` is a type of block with namespace and properties(aka attributes) in MC.
 pub type Block = block::Block;
@@ -117,7 +116,7 @@ impl SchemFormat {
             SchemFormat::VanillaStructure => ".nbt",
             SchemFormat::WorldEdit13 => ".schem",
             SchemFormat::WorldEdit12 => ".schematic",
-        }
+        };
     }
 
     /// Return all supported formats

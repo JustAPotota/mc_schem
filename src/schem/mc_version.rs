@@ -533,7 +533,7 @@ pub enum DataVersion {
      * Data version was introduced in snapshot 15w32a.
      * Value below has no meaning outside this crate, we assign i32 to these versions simply to
      * satisfy the requirement of rust enumeration
-    */
+     */
     Snapshot_15w31c = 99,
     Snapshot_15w31b = 98,
     Snapshot_15w31a = 97,

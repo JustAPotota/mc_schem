@@ -16,10 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::collections::HashMap;
-use ndarray::{Array3};
 use crate::block::Block;
 use crate::error::Error;
+use ndarray::Array3;
+use std::collections::HashMap;
 
 /// Sky light and block light
 #[derive(Debug, Copy, Clone)]
@@ -42,7 +42,6 @@ pub struct BlockEntity {
     /// nbt tags of block entity
     pub tags: HashMap<String, fastnbt::Value>,
 }
-
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[allow(dead_code)]
@@ -74,7 +73,6 @@ pub trait HasPalette {
         return None;
     }
 
-
     /// Returns the block index of air in this region
     fn block_index_of_air(&self) -> Option<u16> {
         for (idx, blk) in self.palette().iter().enumerate() {
@@ -95,7 +93,6 @@ pub trait HasPalette {
         return None;
     }
 }
-
 
 /// Part of a Minecraft world
 pub trait WorldSlice {
@@ -120,11 +117,15 @@ pub trait WorldSlice {
     fn total_blocks(&self, include_air: bool) -> u64;
     /// Returns detailed block infos at `r_pos`, including block index, block, block entity and pending tick.
     /// Returns `None` if the block is outside the region
-    fn block_info_at(&self, r_pos: [i32; 3]) -> Option<(u16, &Block, Option<&BlockEntity>, &[PendingTick])> {
-        return Some((self.block_index_at(r_pos)?,
-                     self.block_at(r_pos)?,
-                     self.block_entity_at(r_pos),
-                     self.pending_tick_at(r_pos),
+    fn block_info_at(
+        &self,
+        r_pos: [i32; 3],
+    ) -> Option<(u16, &Block, Option<&BlockEntity>, &[PendingTick])> {
+        return Some((
+            self.block_index_at(r_pos)?,
+            self.block_at(r_pos)?,
+            self.block_entity_at(r_pos),
+            self.pending_tick_at(r_pos),
         ));
     }
     /// Get block index at `r_pos`, returns `None` if the block is outside the region
@@ -154,7 +155,6 @@ pub trait HasOffset {
 //     return self.block_info_at_mut(r_pos)?.3;
 // }
 
-
 /// Region is a 3d area in Minecraft, containing blocks and entities. \
 /// Litematica files can have multiple regions, but vanilla structure, world edit schematics can have only one. \
 /// Blocks in a region are stored as continuous 3d index array. A palette(Vec of blocks) records all
@@ -177,8 +177,6 @@ pub struct Region {
     pub entities: Vec<Entity>,
     /// Offset of this region
     pub offset: [i32; 3],
-
-
     //pub array_number_id_damage: Option<Array3<(u8, u8)>>
 }
 
@@ -227,7 +225,6 @@ impl BlockEntity {
     }
 }
 
-
 impl PendingTickInfo {
     pub fn default() -> PendingTickInfo {
         return PendingTickInfo::Block { id: "".to_string() };
@@ -247,12 +244,14 @@ impl HasOffset for Region {
 }
 
 impl WorldSlice for Region {
-
     /// Shape in x, y, z
     fn shape(&self) -> [i32; 3] {
         let shape = self.array_yzx.shape();
         if shape.len() != 3 {
-            panic!("Invalid array dimensions: should be 3 but now it is {}", shape.len());
+            panic!(
+                "Invalid array dimensions: should be 3 but now it is {}",
+                shape.len()
+            );
         }
         return Self::pos_yzx_to_xyz(&[shape[0] as i32, shape[1] as i32, shape[2] as i32]);
     }
@@ -285,11 +284,17 @@ impl WorldSlice for Region {
 
     /// Returns detailed block infos at `r_pos`, including block index, block, block entity and pending tick.
     /// Returns `None` if the block is outside the region
-    fn block_info_at(&self, r_pos: [i32; 3]) -> Option<(u16, &Block, Option<&BlockEntity>, &[PendingTick])> {
+    fn block_info_at(
+        &self,
+        r_pos: [i32; 3],
+    ) -> Option<(u16, &Block, Option<&BlockEntity>, &[PendingTick])> {
         return if let Some(pid) = self.block_index_at(r_pos) {
-            Some((pid, &self.palette[pid as usize],
-                  self.block_entities.get(&r_pos),
-                  self.pending_tick_at(r_pos)))
+            Some((
+                pid,
+                &self.palette[pid as usize],
+                self.block_entities.get(&r_pos),
+                self.pending_tick_at(r_pos),
+            ))
         } else {
             None
         };
@@ -329,18 +334,21 @@ impl WorldSlice for Region {
     }
 }
 
-
 #[allow(dead_code)]
 impl Region {
     /// Convert pos from xyz to yzx
     pub fn pos_xyz_to_yzx<T>(pos: &[T; 3]) -> [T; 3]
-        where T: Copy {
+    where
+        T: Copy,
+    {
         return [pos[1], pos[2], pos[0]];
     }
 
     /// Convert pos from yzx to xyz
     pub fn pos_yzx_to_xyz<T>(yzx: &[T; 3]) -> [T; 3]
-        where T: Copy {
+    where
+        T: Copy,
+    {
         return [yzx[2], yzx[0], yzx[1]];
     }
 
@@ -350,7 +358,11 @@ impl Region {
     }
 
     pub fn with_shape(shape_xyz: [i32; 3]) -> Region {
-        let shape_yzx = [shape_xyz[1] as usize, shape_xyz[2] as usize, shape_xyz[0] as usize];
+        let shape_yzx = [
+            shape_xyz[1] as usize,
+            shape_xyz[2] as usize,
+            shape_xyz[0] as usize,
+        ];
         //let shape_zx = [shape_xyz[2], shape_xyz[1]];
         let mut result = Region {
             name: String::from("NewRegion"),
@@ -445,7 +457,10 @@ impl Region {
         for idx in 0..3 {
             let sz = shape_xyz[idx];
             if sz < 0 {
-                panic!("Try resizing with negative size [{},{},{}]", shape_xyz[0], shape_xyz[1], shape_xyz[2]);
+                panic!(
+                    "Try resizing with negative size [{},{},{}]",
+                    shape_xyz[0], shape_xyz[1], shape_xyz[2]
+                );
             }
             usz[idx] = sz as usize;
         }
@@ -461,7 +476,10 @@ impl Region {
     pub fn shape_yzx(&self) -> [i32; 3] {
         let shape = self.array_yzx.shape();
         if shape.len() != 3 {
-            panic!("Invalid array dimensions: should be 3 but now it is {}", shape.len());
+            panic!(
+                "Invalid array dimensions: should be 3 but now it is {}",
+                shape.len()
+            );
         }
         return [shape[0] as i32, shape[1] as i32, shape[2] as i32];
     }
@@ -549,7 +567,7 @@ impl Region {
                 self.palette.push(block.clone());
                 (self.palette.len() - 1) as u16
             }
-        }
+        };
     }
     /// Fill the region with block
     pub fn fill_with(&mut self, block: &Block) {
@@ -562,17 +580,30 @@ impl Region {
         return self.block_entities.insert(r_pos, be);
     }
     /// Set pending tick at `r_pos`
-    pub fn set_pending_tick_at(&mut self, r_pos: [i32; 3], value: Vec<PendingTick>) -> Option<Vec<PendingTick>> {
+    pub fn set_pending_tick_at(
+        &mut self,
+        r_pos: [i32; 3],
+        value: Vec<PendingTick>,
+    ) -> Option<Vec<PendingTick>> {
         return self.pending_ticks.insert(r_pos, value);
     }
 
     /// Returns detailed block infos at `r_pos`, including block index, block, block entity(mutable) and pending tick(mutable).
     /// Returns `None` if the block is outside the region
-    pub fn block_info_at_mut(&mut self, r_pos: [i32; 3]) -> Option<(u16, &Block, Option<&mut BlockEntity>, &mut [PendingTick])> {
+    pub fn block_info_at_mut(
+        &mut self,
+        r_pos: [i32; 3],
+    ) -> Option<(u16, &Block, Option<&mut BlockEntity>, &mut [PendingTick])> {
         return if let Some(pid) = self.block_index_at(r_pos) {
-            Some((pid, &self.palette[pid as usize],
-                  self.block_entities.get_mut(&r_pos),
-                  if let Some(pts) = self.pending_ticks.get_mut(&r_pos) { pts.as_mut_slice() } else { &mut [] }
+            Some((
+                pid,
+                &self.palette[pid as usize],
+                self.block_entities.get_mut(&r_pos),
+                if let Some(pts) = self.pending_ticks.get_mut(&r_pos) {
+                    pts.as_mut_slice()
+                } else {
+                    &mut []
+                },
             ))
         } else {
             None
