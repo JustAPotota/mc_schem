@@ -27,6 +27,9 @@ use strum::Display;
 #[repr(i32)]
 #[allow(dead_code)]
 pub enum DataVersion {
+    Java_1_21_2_rc1 = 4078,
+    Java_1_21_1 = 3955,
+    Java_1_21 = 3953,
     Snapshot_23w51b = 3802,
     Snapshot_23w51a = 3801,
     Java_1_20_4 = 3700,
@@ -1055,11 +1058,11 @@ pub enum DataVersion {
 impl DataVersion {
     /// The latest data version
     pub fn latest() -> DataVersion {
-        return DataVersion::Snapshot_23w51b;
+        return DataVersion::Java_1_21_2_rc1;
     }
 
     pub fn new() -> DataVersion {
-        return DataVersion::Java_1_20_4;
+        return DataVersion::Java_1_21_1;
     }
 }
 

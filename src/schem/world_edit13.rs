@@ -39,17 +39,11 @@ impl Schematic {
         filename: &str,
         option: &WorldEdit13LoadOption,
     ) -> Result<(Schematic, WE13MetaData), Error> {
-        let mut file;
-        match File::open(filename) {
-            Ok(f) => file = f,
-            Err(e) => return Err(Error::FileOpenError(e)),
-        }
+        let mut file = File::open(filename).map_err(Error::FileOpenError)?;
 
         let decoder = GzDecoder::new(&mut file);
-        let nbt = match fastnbt::from_reader(decoder) {
-            Ok(nbt_) => nbt_,
-            Err(e) => return Err(Error::NBTReadError(e)),
-        };
+        let nbt = fastnbt::from_reader(decoder).map_err(Error::NBTReadError)?;
+
         return Self::from_world_edit_13_nbt(nbt, option);
     }
 
@@ -94,12 +88,12 @@ impl Schematic {
         root: HashMap<String, Value>,
         option: &WorldEdit13LoadOption,
     ) -> Result<(Schematic, WE13MetaData), Error> {
-        return if root.contains_key("Schematic") {
+        if root.contains_key("Schematic") {
             //v3
             Self::parse_v3(root, option)
         } else {
             Self::parse_v2(root, option)
-        };
+        }
     }
     /// Load `.schem` from reader
     pub fn from_world_edit_13_reader(
@@ -182,16 +176,16 @@ fn parse_metadata(
         // we offset
         {
             let keys = ["WEOffsetX", "WEOffsetY", "WEOffsetZ"];
-            for dim in 0..3 {
+            for (dim, key) in keys.iter().enumerate() {
                 we13.we_offset[dim] = *unwrap_opt_tag!(
-                    tag_md.get(keys[dim]),
+                    tag_md.get(*key),
                     Int,
                     0,
-                    format!("{tag_path}/Metadata/{}", keys[dim])
+                    format!("{tag_path}/Metadata/{}", key)
                 );
             }
         }
-        let shape = Region::parse_size_v2(&nbt, "/", _option)?;
+        let shape = Region::parse_size_v2(nbt, "/", _option)?;
         we13.width = shape[0] as i16;
         we13.height = shape[1] as i16;
         we13.length = shape[2] as i16;
@@ -234,7 +228,7 @@ fn parse_metadata(
         } else {
             we13.v3_extra = None;
         }
-        let shape = Region::parse_size_v2(&nbt, "/Schematic", _option)?;
+        let shape = Region::parse_size_v2(nbt, "/Schematic", _option)?;
         we13.width = shape[0] as i16;
         we13.height = shape[1] as i16;
         we13.length = shape[2] as i16;
@@ -246,7 +240,7 @@ fn parse_metadata(
 }
 
 fn parse_single_block(src: &[i8]) -> i32 {
-    debug_assert!(src.len() > 0);
+    debug_assert!(!src.is_empty());
     if src.len() == 1 {
         debug_assert!(src[0] >= 0);
         return src[0] as i32;
@@ -259,12 +253,11 @@ fn parse_single_block(src: &[i8]) -> i32 {
         } else {
             debug_assert!(*value < 0);
         }
-        let value_fixed;
-        if idx != 0 {
-            value_fixed = *value as i32 + 1;
+        let value_fixed = if idx != 0 {
+            *value as i32 + 1
         } else {
-            value_fixed = *value as i32;
-        }
+            *value as i32
+        };
         result += value_fixed * (1 << (idx * 7));
     }
 

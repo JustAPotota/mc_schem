@@ -17,15 +17,15 @@ pub struct Item {
 
 impl Item {
     pub fn from_nbt(nbt: &HashMap<String, Value>, tag_path: &str) -> Result<Item, Error> {
-        let count = unwrap_opt_i8(&nbt, "Count", tag_path)?;
-        let id = unwrap_opt_string(&nbt, "id", tag_path)?.clone();
+        let count = unwrap_opt_i8(nbt, "Count", tag_path)?;
+        let id = unwrap_opt_string(nbt, "id", tag_path)?.clone();
         let tags = if let Some(t) = nbt.get("tag") {
             unwrap_tag!(t, Compound, HashMap::new(), format!("{tag_path}/tag")).clone()
         } else {
             HashMap::new()
         };
 
-        return Ok(Item { count, id, tags });
+        Ok(Item { count, id, tags })
 
         // let nbt = Value::Compound(nbt);
         // let deserializer = NBTWithPath {

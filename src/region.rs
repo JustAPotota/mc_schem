@@ -504,8 +504,7 @@ impl Region {
     /// Remove non-existing blocks from palette. Returns error if there is any block index that is
     /// equal or greater than length of palette
     pub fn shrink_palette(&mut self) -> Result<(), Error> {
-        let mut block_counter: Vec<u64> = Vec::new();
-        block_counter.resize(self.palette.len(), 0);
+        let mut block_counter: Vec<u64> = vec![0; self.palette.len()];
 
         for x in 0..self.shape()[0] {
             for y in 0..self.shape()[1] {
@@ -528,14 +527,14 @@ impl Region {
         {
             let mut counter: u16 = 0;
             for id in 0..self.palette.len() {
-                if block_counter[id] <= 0 {
+                if block_counter[id] == 0 {
                     continue;
                 }
                 id_map[id] = counter;
                 counter += 1;
             }
             for id in (0..block_counter.len()).rev() {
-                if block_counter[id] <= 0 {
+                if block_counter[id] == 0 {
                     self.palette.remove(id);
                 }
             }
@@ -546,7 +545,7 @@ impl Region {
             *blkid = new_id;
         }
 
-        return Ok(());
+        Ok(())
     }
 
     /// Find the block index of a block in palette

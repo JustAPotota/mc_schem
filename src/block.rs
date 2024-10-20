@@ -54,10 +54,10 @@ pub enum BlockIdParseError {
 
 fn check_blockid_characters(blkid: &str) -> Result<(), BlockIdParseError> {
     for ch in blkid.chars() {
-        if ch >= 'a' && ch <= 'z' {
+        if ch.is_ascii_lowercase() {
             continue;
         }
-        if ch >= '0' && ch <= '9' {
+        if ch.is_ascii_digit() {
             continue;
         }
 
@@ -113,7 +113,7 @@ fn check_attributes_segment(att_seg: &str) -> Result<(), BlockIdParseError> {
                     return Err(BlockIdParseError::TooManyEqualsInAttributes);
                 }
 
-                if eq_loc <= 0 {
+                if eq_loc == 0 {
                     return Err(BlockIdParseError::MissingAttributeName);
                 }
                 if eq_loc + 1 >= seg.len() {
@@ -129,10 +129,7 @@ fn check_attributes_segment(att_seg: &str) -> Result<(), BlockIdParseError> {
 
 /// Split a string id into 3 segments: namespace, id and property list.
 pub fn parse_block_id(full_id: &str) -> Result<(&str, &str, &str), BlockIdParseError> {
-    match check_blockid_characters(full_id) {
-        Err(err) => return Err(err),
-        _ => {}
-    }
+    check_blockid_characters(full_id)?;
 
     let mut namespace = "";
     let colon_loc_opt = full_id.find(':');
@@ -184,11 +181,7 @@ pub fn parse_block_id(full_id: &str) -> Result<(&str, &str, &str), BlockIdParseE
 
     let attributes = &full_id[(bracket_locs.0 + 1)..bracket_locs.1];
 
-    let check_res = check_attributes_segment(attributes);
-    match check_res {
-        Err(e) => return Err(e),
-        _ => {}
-    }
+    check_attributes_segment(attributes)?;
 
     return Ok((namespace, id, attributes));
 }
@@ -210,7 +203,7 @@ pub fn parse_attributes_segment(att_seg: &str) -> Result<Vec<(&str, &str)>, Bloc
                     return Err(BlockIdParseError::TooManyEqualsInAttributes);
                 }
 
-                if eq_loc <= 0 {
+                if eq_loc == 0 {
                     return Err(BlockIdParseError::MissingAttributeName);
                 }
                 if eq_loc + 1 >= seg.len() {
@@ -267,19 +260,9 @@ impl Block {
     }
     /// Parse a block from `blkid`
     pub fn from_id(blkid: &str) -> Result<Block, BlockIdParseError> {
-        let parse_res = parse_block_id(blkid);
-        let segmented: (&str, &str, &str);
-        match parse_res {
-            Err(e) => return Err(e),
-            Ok(segs) => segmented = segs,
-        }
+        let segmented = parse_block_id(blkid)?;
 
-        let attri_res = parse_attributes_segment(segmented.2);
-        let attri_list: Vec<(&str, &str)>;
-        match attri_res {
-            Err(e) => return Err(e),
-            Ok(attri_l) => attri_list = attri_l,
-        }
+        let attri_list = parse_attributes_segment(segmented.2)?;
 
         let mut blk: Block = Block::new();
         blk.namespace = segmented.0.to_string();

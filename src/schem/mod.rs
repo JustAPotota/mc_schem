@@ -590,7 +590,7 @@ impl Schematic {
         }
 
         let split = filename.split(".");
-        let extension = split.last().unwrap_or_else(|| "");
+        let extension = split.last().unwrap_or("");
 
         return Err(Error::UnrecognisedExtension {
             extension: extension.to_string(),
@@ -611,7 +611,7 @@ impl Schematic {
         }
 
         let split = filename.split(".");
-        let extension = split.last().unwrap_or_else(|| "");
+        let extension = split.last().unwrap_or("");
 
         return Err(Error::UnrecognisedExtension {
             extension: extension.to_string(),
@@ -627,10 +627,10 @@ impl Schematic {
             dest.reserve(src.len());
             dest.clear();
             for blk in src {
-                if dest.contains(&*blk) {
+                if dest.contains(blk) {
                     continue;
                 }
-                dest.push(&*blk);
+                dest.push(blk);
             }
         }
 

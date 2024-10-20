@@ -38,7 +38,7 @@ unsafe extern "C" fn MC_SCHEM_release_nbt(nbt_box: *mut CValueBox) {
 
 #[no_mangle]
 unsafe extern "C" fn MC_SCHEM_swap_nbt(a: *mut Value, b: *mut Value) {
-    swap(&mut *a, &mut *b);
+    core::ptr::swap(&mut *a, &mut *b);
 }
 
 #[no_mangle]
